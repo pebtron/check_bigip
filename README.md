@@ -4,7 +4,7 @@ Nagios checks for F5 BIG-IP
 A Python port of Timo Schlueter's excellent check_bigip_pools.pl
 https://github.com/timoschlueter/check_bigip_pools.
 
-Tested on RHEL 6 against several F5 BIG-IP LTM 11.4.1 devices.
+Tested on Ubuntu 20.04 LTS against several F5 BIG-IP LTM 16.1 devices.
 
 My goal is to eventually create a companion script to check F5 GTM
 pools.

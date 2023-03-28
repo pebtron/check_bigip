@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Nagios check for an F5 LTM pool
 
 Checks an F5 LTM pool for available members. If all members are available then
@@ -10,9 +10,8 @@ https://github.com/timoschlueter/check_bigip_pools
 http://blog.simiya.com/2013/06/08/python-example-script-snmpwalk-snmpget/
 """
 
-from __future__ import print_function
+from easysnmp import Session
 import argparse
-import netsnmp
 import sys
 
 
@@ -53,37 +52,21 @@ class ParseArgs():
         self.snmpcmd['pool'] = args.pool
 
 
-def snmp_query(snmpcmd, oid, method):
+def snmp_query(snmpcmd, oid):
     """Query SNMP for a specific OID
 
-    Pass in a list of SNMP options, the OID, and either get or walk and return a
-    list of results.
+    Pass in a list of SNMP options and the OID
     """
     try:
-        session = netsnmp.Session(DestHost=snmpcmd['ipaddress'], Version=snmpcmd['version'], Community=snmpcmd['community'])
-        results_objs = netsnmp.VarList(netsnmp.Varbind(oid))
-        if method == 'get':
-            session.get(results_objs)
-        else:
-            session.walk(results_objs)
+        session = Session(hostname=snmpcmd['ipaddress'], community=snmpcmd['community'], version=snmpcmd['version'])
+        return_results = {}
+        return_results = session.walk(oid)
 
     except Exception as exception_error:
         # Check for errors and print out results
-        print('ERROR: Occurred during SNMPget for OID %s from %s: '
+        print('ERROR: Occurred during walk for OID %s from %s: '
               '(%s)') % (oid, snmpcmd['ipaddress'], exception_error)
         sys.exit(2)
-
-    # Crash on error
-    if (session.ErrorStr):
-        print('ERROR: Occurred during SNMPget for OID %s from %s: '
-              '(%s) ErrorNum: %s, ErrorInd: %s') % (
-               oid, snmpcmd['ipaddress'], session.ErrorStr,
-               session.ErrorNum, session.ErrorInd)
-        sys.exit(2)
-
-    return_results = {}
-    for result in results_objs:
-        return_results[('%s') % (result.iid)] = (result.val)
 
     return return_results
 
@@ -109,20 +92,20 @@ def main():
     for letter in pool:
         poolOID += '.' + str(ord(letter))
 
-    activeMemberCount = snmp_query(snmpcmd, activeMemberCountOID, 'walk')
-    for key in activeMemberCount.keys():
-        if key.endswith(poolOID):
-            activeMembers = activeMemberCount[key]
+    activeMemberCount = snmp_query(snmpcmd, activeMemberCountOID)
+    for item in activeMemberCount:
+        if item.oid.endswith(poolOID):
+            activeMembers = item.value
 
-    availableMemberCount = snmp_query(snmpcmd, availableMemberCountOID, 'walk')
-    for key in availableMemberCount.keys():
-        if key.endswith(poolOID):
-            availableMembers = availableMemberCount[key]
+    availableMemberCount = snmp_query(snmpcmd, availableMemberCountOID)
+    for item in availableMemberCount:
+        if item.oid.endswith(poolOID):
+            availableMembers = item.value
 
-    poolAvailabilityCount = snmp_query(snmpcmd, poolAvailabilityCountOID, 'walk')
-    for key in poolAvailabilityCount.keys():
-        if key.endswith(poolOID):
-            poolStatus = poolAvailabilityCount[key]
+    poolAvailabilityCount = snmp_query(snmpcmd, poolAvailabilityCountOID)
+    for item in poolAvailabilityCount:
+        if item.oid.endswith(poolOID):
+            poolStatus = item.value
 
     output = '- Pool: ' + pool + ', Active members: ' + activeMembers + \
              '/' + availableMembers + ' | activeMembers=' + activeMembers + \
